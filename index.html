@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Card Management System — Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Card Management System</h1>
+    <div class="top-actions">
+      <input id="searchInput" placeholder="Search card / unit / tenant..." />
+      <button id="exportBtn" class="btn">Export CSV</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Dashboard summary -->
+    <section class="card summary">
+      <div class="summary-item">
+        <div class="big" id="statTotalCards">0</div>
+        <div class="small">Total cards</div>
+      </div>
+      <div class="summary-item">
+        <div class="big" id="statAssigned">0</div>
+        <div class="small">Assigned</div>
+      </div>
+      <div class="summary-item">
+        <div class="big" id="statAvailable">0</div>
+        <div class="small">Available</div>
+      </div>
+      <div class="summary-item">
+        <div class="big" id="statMissing">0</div>
+        <div class="small">Missing</div>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <section class="card controls">
+      <div class="controls-col">
+        <h3>Quick actions</h3>
+        <button class="btn" id="openAddApartment">Add apartment</button>
+        <button class="btn" id="openAddCard">Add card</button>
+      </div>
+
+      <div class="controls-col">
+        <h3>Filters</h3>
+        <select id="filterUnit">
+          <option value="">All units</option>
+        </select>
+        <select id="filterType">
+          <option value="">All card types</option>
+          <option>Access Card</option>
+          <option>Parking Card</option>
+          <option>Utility Card</option>
+        </select>
+        <select id="filterStatus">
+          <option value="">All statuses</option>
+          <option>Available</option>
+          <option>Assigned</option>
+          <option>Missing</option>
+        </select>
+        <button class="btn" id="applyFilters">Apply</button>
+        <button class="btn ghost" id="clearFilters">Clear</button>
+      </div>
+    </section>
+
+    <!-- Table: cards -->
+    <section class="card">
+      <h2>Cards</h2>
+      <div class="table-wrap">
+        <table id="cardsTable">
+          <thead>
+            <tr>
+              <th>Unit</th>
+              <th>Card type</th>
+              <th>Card number</th>
+              <th>Status</th>
+              <th>Assigned to</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Table: apartments (compact) -->
+    <section class="card small">
+      <h2>Apartments</h2>
+      <div id="apartmentsList"></div>
+    </section>
+  </main>
+
+  <!-- Modal templates -->
+  <div class="modal" id="modalBackdrop" aria-hidden="true">
+    <div class="modal-panel">
+      <button class="modal-close" id="modalClose">✕</button>
+
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
