@@ -4,7 +4,88 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Card Management System — Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ================= CSS ================= */
+    :root{
+      --bg:#f4f6f8;
+      --card:#ffffff;
+      --accent:#0b67d0;
+      --muted:#6b7280;
+      --danger:#d9534f;
+      --success:#28a745;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter, system-ui, Arial, sans-serif;
+      background:var(--bg);
+      color:#111827;
+      -webkit-font-smoothing:antialiased;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:18px 24px;
+      background:linear-gradient(90deg,#fff,#f7fbff);
+      border-bottom:1px solid #e6eef8;
+    }
+    .topbar h1{margin:0;font-size:18px}
+    .top-actions{display:flex;gap:8px;align-items:center}
+    .top-actions input{
+      padding:8px 10px;border-radius:6px;border:1px solid #d1d5db;width:280px
+    }
+    .container{max-width:1100px;margin:22px auto;padding:0 18px}
+
+    /* cards and layout */
+    .card{background:var(--card);padding:16px;border-radius:10px;margin-bottom:16px;box-shadow:0 6px 18px rgba(15,23,42,0.03)}
+    .summary{display:flex;gap:18px;align-items:center}
+    .summary-item{padding:8px 14px;border-radius:8px;background:linear-gradient(180deg,#fff,#fbfdff);flex:1;text-align:center}
+    .summary-item .big{font-size:22px;font-weight:700}
+    .summary-item .small{color:var(--muted);margin-top:6px}
+
+    .controls{display:flex;gap:18px;flex-wrap:wrap}
+    .controls-col{flex:1;min-width:200px}
+    .btn{
+      background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:600
+    }
+    .btn.ghost{background:transparent;color:var(--accent);border:1px solid #dbeafe}
+    .small{font-size:13px}
+
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    thead th{background:#f3f6fb;padding:10px;text-align:left;color:#0f1724;font-weight:600;border-bottom:1px solid #e6eef8}
+    td{padding:10px;border-bottom:1px solid #f1f5f9}
+    .status-pill{padding:6px 8px;border-radius:500px;font-size:13px;font-weight:600;display:inline-block}
+    .status-Available{background:#eef2ff;color:#0b67d0}
+    .status-Assigned{background:#fff7ed;color:#b45309}
+    .status-Missing{background:#fff1f2;color:#9b1c1c}
+
+    .actions .tiny{padding:6px 8px;margin-right:6px;border-radius:6px;border:0;cursor:pointer}
+    .actions .tiny.secondary{background:#eef2ff;color:var(--accent)}
+    .actions .tiny.danger{background:#ffe8e6;color:var(--danger)}
+
+    #apartmentsList{display:flex;flex-wrap:wrap;gap:8px}
+    .apartment-pill{background:#fff;border:1px solid #e6eef8;padding:8px 10px;border-radius:8px;font-weight:600}
+
+    /* modal */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.45);z-index:60}
+    .modal[aria-hidden="false"]{display:flex}
+    .modal-panel{width:700px;max-width:95%;background:var(--card);border-radius:10px;padding:18px;position:relative}
+    .modal-close{position:absolute;right:12px;top:10px;border:0;background:transparent;font-size:16px;cursor:pointer}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .form-row .full{grid-column:1/-1}
+    label{display:block;font-size:13px;margin-bottom:6px;color:var(--muted)}
+    input[type=text],select,textarea{width:100%;padding:8px;border:1px solid #e6eef8;border-radius:8px}
+    .text-muted{color:var(--muted);font-size:13px;margin-top:8px}
+
+    @media(max-width:500px){
+      .form-row { grid-template-columns: 1fr; }
+      .top-actions input { width: 150px; }
+    }
+  </style>
 </head>
 <body>
   <header class="topbar">
@@ -16,7 +97,6 @@
   </header>
 
   <main class="container">
-    <!-- Dashboard summary -->
     <section class="card summary">
       <div class="summary-item">
         <div class="big" id="statTotalCards">0</div>
@@ -36,14 +116,12 @@
       </div>
     </section>
 
-    <!-- Controls -->
     <section class="card controls">
       <div class="controls-col">
         <h3>Quick actions</h3>
         <button class="btn" id="openAddApartment">Add apartment</button>
         <button class="btn" id="openAddCard">Add card</button>
       </div>
-
       <div class="controls-col">
         <h3>Filters</h3>
         <select id="filterUnit">
@@ -66,7 +144,6 @@
       </div>
     </section>
 
-    <!-- Table: cards -->
     <section class="card">
       <h2>Cards</h2>
       <div class="table-wrap">
@@ -86,22 +163,232 @@
       </div>
     </section>
 
-    <!-- Table: apartments (compact) -->
     <section class="card small">
       <h2>Apartments</h2>
       <div id="apartmentsList"></div>
     </section>
   </main>
 
-  <!-- Modal templates -->
   <div class="modal" id="modalBackdrop" aria-hidden="true">
     <div class="modal-panel">
       <button class="modal-close" id="modalClose">✕</button>
-
       <div id="modalContent"></div>
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script>
+    /* ================= JS ================= */
+    const STORAGE_KEY = 'cardMgmtData_v1';
+
+    const defaultData = { apartments:[], cards:[] };
+    let store = loadStore();
+
+    const statTotal = document.getElementById('statTotalCards');
+    const statAssigned = document.getElementById('statAssigned');
+    const statAvailable = document.getElementById('statAvailable');
+    const statMissing = document.getElementById('statMissing');
+
+    const cardsTableBody = document.querySelector('#cardsTable tbody');
+    const apartmentsList = document.getElementById('apartmentsList');
+    const filterUnit = document.getElementById('filterUnit');
+    const filterType = document.getElementById('filterType');
+    const filterStatus = document.getElementById('filterStatus');
+    const searchInput = document.getElementById('searchInput');
+
+    const modal = document.getElementById('modalBackdrop');
+    const modalContent = document.getElementById('modalContent');
+    const modalClose = document.getElementById('modalClose');
+
+    document.getElementById('openAddApartment').addEventListener('click', showAddApartment);
+    document.getElementById('openAddCard').addEventListener('click', showAddCard);
+    document.getElementById('applyFilters').addEventListener('click', render);
+    document.getElementById('clearFilters').addEventListener('click', clearFilters);
+    document.getElementById('exportBtn').addEventListener('click', exportCSV);
+    modalClose.addEventListener('click', closeModal);
+    searchInput.addEventListener('input', render);
+
+    render();
+
+    function loadStore(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw){ localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData)); return JSON.parse(JSON.stringify(defaultData)); }
+        return JSON.parse(raw);
+      } catch(e){ console.error(e); return JSON.parse(JSON.stringify(defaultData)); }
+    }
+
+    function saveStore(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); }
+    function uid(prefix='id'){ return prefix + Math.random().toString(36).slice(2,9); }
+
+    /* ----- Render ----- */
+    function render(){
+      populateUnitFilter();
+      const total = store.cards.length;
+      const assigned = store.cards.filter(c=>c.status==='Assigned').length;
+      const available = store.cards.filter(c=>c.status==='Available').length;
+      const missing = store.cards.filter(c=>c.status==='Missing').length;
+      statTotal.textContent = total;
+      statAssigned.textContent = assigned;
+      statAvailable.textContent = available;
+      statMissing.textContent = missing;
+
+      const q = searchInput.value.trim().toLowerCase();
+      const unitFilterVal = filterUnit.value;
+      const typeFilterVal = filterType.value;
+      const statusFilterVal = filterStatus.value;
+
+      const rows = store.cards.filter(card=>{
+        if(unitFilterVal && card.unitId!==unitFilterVal) return false;
+        if(typeFilterVal && card.type!==typeFilterVal) return false;
+        if(statusFilterVal && card.status!==statusFilterVal) return false;
+        if(q){
+          const unitName = (store.apartments.find(a=>a.id===card.unitId)||{name:''}).name.toLowerCase();
+          if(!(card.number.toLowerCase().includes(q) ||
+               card.type.toLowerCase().includes(q) ||
+               (card.assignedTo||'').toLowerCase().includes(q) ||
+               unitName.includes(q))) return false;
+        }
+        return true;
+      });
+
+      cardsTableBody.innerHTML='';
+      rows.forEach(card=>{
+        const tr = document.createElement('tr');
+        const unitName = (store.apartments.find(a=>a.id===card.unitId)||{name:'-'}).name;
+        tr.innerHTML = `<td>${unitName}</td><td>${card.type}</td><td>${card.number}</td>
+        <td><span class="status-pill status-${card.status.replace(/\s/g,'')}">${card.status}</span></td>
+        <td>${card.assignedTo||'-'}</td>
+        <td class="actions">
+          <button class="tiny secondary" data-id="${card.id}" data-action="assign">Assign</button>
+          <button class="tiny" data-id="${card.id}" data-action="return">Return</button>
+          <button class="tiny" data-id="${card.id}" data-action="history">History</button>
+          <button class="tiny danger" data-id="${card.id}" data-action="delete">Delete</button>
+        </td>`;
+        cardsTableBody.appendChild(tr);
+      });
+
+      cardsTableBody.querySelectorAll('button').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const id=btn.dataset.id, action=btn.dataset.action;
+          if(action==='assign') showAssignCard(id);
+          if(action==='return') markReturn(id);
+          if(action==='history') showCardHistory(id);
+          if(action==='delete') deleteCard(id);
+        });
+      });
+
+      apartmentsList.innerHTML='';
+      store.apartments.forEach(a=>{
+        const el = document.createElement('div');
+        const countAssigned = store.cards.filter(c=>c.unitId===a.id && c.status==='Assigned').length;
+        const countMissing = store.cards.filter(c=>c.unitId===a.id && c.status==='Missing').length;
+        el.className='apartment-pill';
+        el.textContent=${a.name} • A:${countAssigned} M:${countMissing};
+        apartmentsList.appendChild(el);
+      });
+    }
+
+    /* ----- Modals, Add, Assign ----- */
+    function openModal(html){ modalContent.innerHTML=html; modal.setAttribute('aria-hidden','false'); modal.addEventListener('click',backdropClick);}
+    function closeModal(){ modal.setAttribute('aria-hidden','true'); modalContent.innerHTML=''; modal.removeEventListener('click',backdropClick);}
+    function backdropClick(e){ if(e.target===modal) closeModal(); }
+
+    function populateUnitFilter(){
+      filterUnit.innerHTML='<option value="">All units</option>';
+      store.apartments.forEach(a=>{
+        const opt = document.createElement('option'); opt.value=a.id; opt.textContent=a.name; filterUnit.appendChild(opt);
+      });
+    }
+
+    function clearFilters(){ filterUnit.value=''; filterType.value=''; filterStatus.value=''; searchInput.value=''; render(); }
+
+    function showAddApartment(){
+      openModal(`<h3>Add apartment</h3><div class="form-row"><div class="full"><label>Unit name or number</label><input id="newUnitName" placeholder="e.g. 103 Studio - Azizi Rivera"/></div></div>
+      <div style="margin-top:12px;text-align:right"><button class="btn" id="saveApartment">Save</button></div>`);
+      document.getElementById('saveApartment').addEventListener('click',()=>{
+        const name = document.getElementById('newUnitName').value.trim();
+        if(!name){ alert('Enter unit name'); return; }
+        store.apartments.push({id:uid('u'),name});
+        saveStore(); closeModal(); render();
+      });
+    }
+
+    function showAddCard(){
+      const options = store.apartments.map(a=><option value="${a.id}">${a.name}</option>).join('');
+      openModal(`<h3>Add card</h3><div class="form-row"><div><label>Unit</label><select id="cardUnit">${options}</select></div>
+      <div><label>Card type</label><select id="cardTypeField"><option>Access Card</option><option>Parking Card</option><option>Utility Card</option></select></div>
+      <div class="full"><label>Card number</label><input id="cardNumberField" placeholder="e.g. A-001"/></div>
+      <div class="full"><label>Status</label><select id="cardStatusField"><option>Available</option><option>Assigned</option><option>Missing</option></select></div>
+      </div><div style="margin-top:12px;text-align:right"><button class="btn" id="saveCard">Save card</button></div>`);
+      document.getElementById('saveCard').addEventListener('click',()=>{
+        const unitId = document.getElementById('cardUnit').value;
+        const type = document.getElementById('cardTypeField').value;
+        const number = document.getElementById('cardNumberField').value.trim();
+        const status = document.getElementById('cardStatusField').value;
+        if(!unitId || !number){ alert('Select unit and enter card number'); return; }
+        const card={id:uid('c'),unitId,type,number,status,assignedTo:'',history:[{when:new Date().toISOString(),action:'Created',note:Status ${status}}]};
+        store.cards.push(card); saveStore(); closeModal(); render();
+      });
+    }
+
+    function showAssignCard(cardId){
+      const card = store.cards.find(c=>c.id===cardId); if(!card) return;
+      openModal(`<h3>Assign card ${card.number}</h3><div><label>Unit</label><div class="text-muted">${(store.apartments.find(a=>a.id===card.unitId)||{name:'-'}).name}</div>
+      <label>Assign to (tenant name)</label><input id="assignName" placeholder="Tenant name"/>
+      <label>Mark status</label><select id="assignStatus"><option>Assigned</option><option>Missing</option></select></div>
+      <div style="margin-top:12px;text-align:right"><button class="btn" id="doAssign">Assign</button></div>`);
+      document.getElementById('doAssign').addEventListener('click',()=>{
+        const name = document.getElementById('assignName').value.trim();
+        const status = document.getElementById('assignStatus').value;
+        if(!name){ alert('Enter tenant name'); return; }
+        card.assignedTo=name; card.status=status;
+        card.history.push({when:new Date().toISOString(),action:'Assigned',note:Assigned to ${name}});
+        saveStore(); closeModal(); render();
+      });
+    }
+
+    function markReturn(cardId){
+      const card = store.cards.find(c=>c.id===cardId); if(!card) return;
+      const prev = card.status; card.status='Available'; card.assignedTo=''; card.history.push({when:new Date().toISOString(),action:'Returned',note:Previous ${prev}});
+      saveStore(); render();
+    }
+
+    function showCardHistory(cardId){
+      const card = store.cards.find(c=>c.id===cardId); if(!card) return;
+      const historyHtml = (card.history||[]).map(h=>{
+        const time=new Date(h.when).toLocaleString();
+        return <div style="margin-bottom:8px"><strong>${h.action}</strong> • ${time}<div class="text-muted">${h.note||''}</div></div>;
+      }).join('')||'<div class="text-muted">No history</div>';
+      openModal(<h3>Card history — ${card.number}</h3><div><div><strong>Type:</strong> ${card.type}</div><div><strong>Status:</strong> ${card.status}</div><div style="margin-top:10px">${historyHtml}</div></div>);
+    }
+
+    function deleteCard(cardId){ if(!confirm('Delete permanently?')) return; store.cards=store.cards.filter(c=>c.id!==cardId); saveStore(); render(); }
+
+    function exportCSV(){
+      const header=['unit','unitId','type','number','status','assignedTo','historyCount'];
+      const rows = store.cards.map(c=>{
+        const unit = (store.apartments.find(a=>a.id===c.unitId)||{name:''}).name;
+        return [unit,c.unitId,c.type,c.number,c.status,c.assignedTo,(c.history||[]).length];
+      });
+      let csv = header.join(',')+'\n'+rows.map(r=>r.map(cell=>"${String(cell||'').replace(/"/g,'""')}").join(',')).join('\n');
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download='card-management-export.csv';
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    (function initSample(){
+      if(store.apartments.length===0 && store.cards.length===0){
+        const u1=uid('u'),u2=uid('u');
+        const c1=uid('c'),c2=uid('c'),c3=uid('c');
+        store.apartments.push({id:u1,name:'103 Studio - Azizi Rivera'});
+        store.apartments.push({id:u2,name:'402A - Marina View'});
+        store.cards.push({id:c1,unitId:u1,type:'Access Card',number:'A-001',status:'Assigned',assignedTo:'John Doe',history:[{when:new Date().toISOString(),action:'Created',note:'Initial sample'},{when:new Date().toISOString(),action:'Assigned',note:'Assigned to John Doe'}]});
+        store.cards.push({id:c2,unitId:u1,type:'Parking Card',number:'P-101',status:'Available',assignedTo:'',history:[{when:new Date().toISOString(),action:'Created',note:'Initial sample'}]});
+        store.cards.push({id:c3,unitId:u2,type:'Utility Card',number:'U-200',status:'Missing',assignedTo:'',history:[{when:new Date().toISOString(),action:'Created',note:'Initial sample'},{when:new Date().toISOString(),action:'Marked Missing',note:'Not returned'}]});
+        saveStore(); render();
+      }
+    })();
+  </script>
 </body>
 </html>
